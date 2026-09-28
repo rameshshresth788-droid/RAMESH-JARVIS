@@ -22,13 +22,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -259,10 +259,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         onDismiss: () -> Unit,
         onSave: (JarvisConfig) -> Unit
     ) {
-        var endpoint by remember { mutableStateOf(initial.endpoint) }
+        var provider by remember { mutableStateOf(AIProviders.byId(initial.providerId)) }
         var apiKey by remember { mutableStateOf(initial.apiKey) }
-        var model by remember { mutableStateOf(initial.model) }
         var prompt by remember { mutableStateOf(initial.systemPrompt) }
+        var providerMenu by remember { mutableStateOf(false) }
 
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -273,16 +273,90 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text("AI connection", color = Color(0xFFD7A928))
-                    OutlinedTextField(endpoint, { endpoint = it }, label={Text("API endpoint")}, singleLine=true)
-                    OutlinedTextField(apiKey, { apiKey = it }, label={Text("API key")}, singleLine=true)
-                    OutlinedTextField(model, { model = it }, label={Text("Model")}, singleLine=true)
-                    OutlinedTextField(prompt, { prompt = it }, label={Text("System prompt")}, minLines=3)
-                    Text("API key is encrypted with Android Keystore and is not stored in the source code.", fontSize=11.sp)
+
+                    Box {
+                        OutlinedButton(
+                            onClick = { providerMenu = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(
+                                    "AI provider",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFBEB9C5)
+                                )
+                                Text(
+                                    provider.name,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = providerMenu,
+                            onDismissRequest = { providerMenu = false }
+                        ) {
+                            AIProviders.ALL.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.name) },
+                                    onClick = {
+                                        provider = option
+                                        providerMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        "Endpoint: ${provider.endpoint}",
+                        fontSize = 10.sp,
+                        color = Color(0xFF9E9AA5)
+                    )
+                    Text(
+                        "Model: ${provider.model}",
+                        fontSize = 10.sp,
+                        color = Color(0xFF9E9AA5)
+                    )
+
+                    OutlinedTextField(
+                        value = apiKey,
+                        onValueChange = { apiKey = it },
+                        label = { Text("API key") },
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = prompt,
+                        onValueChange = { prompt = it },
+                        label = { Text("System prompt") },
+                        minLines = 3
+                    )
+
+                    Text(
+                        "Select an AI provider. Endpoint and model are filled automatically. Only your API key is required.",
+                        fontSize = 11.sp,
+                        color = Color(0xFFBEB9C5)
+                    )
+                    Text(
+                        "API key is encrypted with Android Keystore and is not stored in the source code.",
+                        fontSize = 11.sp
+                    )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    onSave(JarvisConfig(endpoint, apiKey, model, prompt))
+                    onSave(
+                        JarvisConfig(
+                            providerId = provider.id,
+                            endpoint = provider.endpoint,
+                            apiKey = apiKey,
+                            model = provider.model,
+                            systemPrompt = prompt
+                        )
+                    )
                 }) { Text("SAVE") }
             },
             dismissButton = {

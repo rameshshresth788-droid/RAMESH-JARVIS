@@ -3,7 +3,9 @@ name: Build Debug APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "master" ]
+    branches:
+      - main
+      - master
 
 permissions:
   contents: read
@@ -11,6 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,14 +22,20 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
           cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.1"
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
+
+      - name: Install Android SDK
+        run: |
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.1"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -34,7 +43,10 @@ jobs:
       - name: Generate Gradle wrapper
         run: gradle wrapper --gradle-version 8.9
 
-      - name: Build debug APK
+      - name: Make Gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build Debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: Upload APK
